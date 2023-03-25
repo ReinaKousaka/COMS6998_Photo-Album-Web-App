@@ -26,8 +26,8 @@ def get_labels(bucket, key):
         },
         MaxLabels=10
     )
-    labels = list(map(lambda x: x['Name'], response['Labels']))
-    print(f'labels is {labels}')
+    labels = list(map(lambda x: x['Name'].lower(), response['Labels']))
+    print(f'labels are {labels}')
     return labels
 
 
