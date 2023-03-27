@@ -78,8 +78,14 @@ def search_open_search(labels):
             index='photos',
             body=query
         )
-        print(f'response is {response}')
-        return response
+        hits = response['hits']['hits']
+        img_list = []
+        for element in hits:
+            objectKey = element['_source']['objectKey']
+            bucket = element['_source']['bucket']
+            image_url = f'https://{bucket}.s3.amazonaws.com/{objectKey}'
+            img_list.append(image_url)
+        return img_list
     except Exception as e:
         print(f'failed to search from OpenSearch: {e}')
 
@@ -89,9 +95,16 @@ def lambda_handler(event, context):
     q = event['queryStringParameters']['q']
     print(f'q is {q}')
     labels = send_to_lex(q)
-    search_open_search(labels)
-
+    img_list = search_open_search(labels)
+    if not img_list:
+        img_list = 'No Result Found'
     return {
         'statusCode': 200,
-        'body': json.dumps('LF2 triggered')
+        'headers': {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': '*',
+        },
+        'body': json.dumps({'results': img_list})
     }

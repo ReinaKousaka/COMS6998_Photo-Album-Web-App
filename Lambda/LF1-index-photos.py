@@ -85,7 +85,7 @@ def lambda_handler(event, context):
     labels = get_labels(bucket, key)
     customlabels = retrieve_metadata(bucket, key)
 
-    store_open_search({
+    response = store_open_search({
         'objectKey': key,
         'bucket': bucket,
         'createdTimestamp': createdTimestamp,
@@ -94,5 +94,11 @@ def lambda_handler(event, context):
 
     return {
         'statusCode': 200,
-        'body': json.dumps('LF1 triggered')
+        'headers': {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': '*',
+        },
+        'body': json.dumps({'results': response})
     }
