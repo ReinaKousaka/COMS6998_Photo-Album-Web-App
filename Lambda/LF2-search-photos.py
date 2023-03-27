@@ -91,20 +91,26 @@ def search_open_search(labels):
 
 
 def lambda_handler(event, context):
+    def die(return_body):
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': '*',
+            },
+            'body': return_body
+        }
+
     print(f'event is {event}')
     q = event['queryStringParameters']['q']
     print(f'q is {q}')
     labels = send_to_lex(q)
+    if not labels:
+        return die(json.dumps({'results': 'No Result Found'}))
+    
     img_list = search_open_search(labels)
     if not img_list:
-        img_list = 'No Result Found'
-    return {
-        'statusCode': 200,
-        'headers': {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': '*',
-        },
-        'body': json.dumps({'results': img_list})
-    }
+        return die(json.dumps({'results': 'No Result Found'}))
+    return die(json.dumps({'results': img_list}))
