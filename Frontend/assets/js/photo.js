@@ -25,6 +25,7 @@ const handleSearch = async () => {
 			alert('No Such Photo Found!');
 		} else {
 			displayImage(res.data.results[0]);
+			console.log(`Find ${res.data.results[0]}`);
 		}
 	}).catch((err) => {
 		console.log(`Search failed: ${err}`)
@@ -87,7 +88,44 @@ const previewFile = (event) => {
 	}
 };
 
-const displayImage = (filepath) => {
-	$("#img").removeAttr("hidden");
-	img.src = filepath;
+const displayImage = async (filepath) => {
+	const die = (msg) => {
+		console.log(msg);
+		alert(msg);
+	};
+
+	try {
+		const res = await fetch(filepath);
+		if (res.status != 200) {
+			die(`Failed to fetch: status code ${res.status}`);
+			return;
+		}
+		const buffer = await streamToArrayBuffer(res.body);
+		const img_src = new TextDecoder().decode(buffer);
+		
+		$("#img").removeAttr("hidden");
+		img.src = img_src;
+	} catch (err) {
+		die(`Failed to fetch and display image: ${err}`);
+	}
 };
+
+
+// helper function to retrieve from ReadableStream
+// stream: ReadableStream<Uint8Array>, return type: Promise<Uint8Array>
+async function streamToArrayBuffer(stream) {
+    let result = new Uint8Array(0);
+    const reader = stream.getReader();
+    while (true) { // eslint-disable-line no-constant-condition
+        const { done, value } = await reader.read();
+        if (done) {
+            break;
+        }
+
+        const newResult = new Uint8Array(result.length + value.length);
+        newResult.set(result);
+        newResult.set(value, result.length);
+        result = newResult;
+    }
+    return result;
+}
