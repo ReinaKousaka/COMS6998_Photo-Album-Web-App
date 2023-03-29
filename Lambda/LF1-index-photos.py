@@ -72,6 +72,16 @@ def store_open_search(json_data):
         print(f'failed to upload to OpenSearch: {e}')
     
 
+def get_decoded_img(bucket, key):
+    response = s3_client.get_object(Bucket=bucket, Key=key)
+    encoded_image = response['Body'].read().decode('utf-8')
+    # important: truncate everything before ;base64,
+    idx = encoded_image.find(';base64,')
+    assert(idx >= 0)
+    encoded_image = encoded_image[idx + 8:]
+    # important: add padding characters to the encoded data
+    decoded_image = b64decode(f"{encoded_image}{'=' * (4 - len(encoded_image) % 4)}")
+    return decoded_image
 
 
 def lambda_handler(event, context):
@@ -81,11 +91,7 @@ def lambda_handler(event, context):
     key = urllib.parse.unquote_plus(record['s3']['object']['key'], encoding='uft-8')
     custom_labels = retrieve_metadata(bucket, key)
     
-    response = s3_client.get_object(Bucket=bucket, Key=key)
-    encoded_image = response['Body'].read().decode('utf-8')
-    # Add padding characters to the encoded data
-    decoded_image = b64decode(f"{encoded_image}{'=' * (4 - len(encoded_image) % 4)}")
-    # Decode the encoded image
+    decoded_image = get_decoded_img(bucket, key)
     labels = get_labels(decoded_image)
 
     createdTimestamp = record['eventTime']
