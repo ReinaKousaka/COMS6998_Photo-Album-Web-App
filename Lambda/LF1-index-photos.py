@@ -6,6 +6,8 @@ import json
 from requests_aws4auth import AWS4Auth
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from datetime import *
+import urllib
+from base64 import b64decode, decodebytes
 
 # OpenSearch
 REGION = 'us-east-1'
@@ -16,13 +18,10 @@ s3_client = boto3.client('s3')
 rek_client = boto3.client('rekognition')
 
 
-def get_labels(bucket, key):
+def get_labels(image):
     response = rek_client.detect_labels(
         Image={
-            'S3Object': {
-                'Bucket': bucket,
-                'Name': key
-            }
+            'Bytes': image
         },
         MaxLabels=10
     )
@@ -31,7 +30,7 @@ def get_labels(bucket, key):
     return labels
 
 
-def retrieve_metadata(bucket, key):
+def retrieve_metadata(bucket, key):    
     response = s3_client.head_object(Bucket=bucket, Key=key)
     print(f'head_object res is {response}')
     customlabels = []
@@ -73,23 +72,29 @@ def store_open_search(json_data):
         print(f'failed to upload to OpenSearch: {e}')
     
 
-def lambda_handler(event, context):
-    # for record in event['Records']:
-    record = event['Records'][0]
 
+
+def lambda_handler(event, context):
+    record = event['Records'][0]
     print(f'record is {record}')
     bucket = record['s3']['bucket']['name']
-    key = record['s3']['object']['key']
-    createdTimestamp = record['eventTime']
+    key = urllib.parse.unquote_plus(record['s3']['object']['key'], encoding='uft-8')
+    custom_labels = retrieve_metadata(bucket, key)
+    
+    response = s3_client.get_object(Bucket=bucket, Key=key)
+    encoded_image = response['Body'].read().decode('utf-8')
+    # Add padding characters to the encoded data
+    decoded_image = b64decode(f"{encoded_image}{'=' * (4 - len(encoded_image) % 4)}")
+    # Decode the encoded image
+    labels = get_labels(decoded_image)
 
-    labels = get_labels(bucket, key)
-    customlabels = retrieve_metadata(bucket, key)
+    createdTimestamp = record['eventTime']
 
     response = store_open_search({
         'objectKey': key,
         'bucket': bucket,
         'createdTimestamp': createdTimestamp,
-        'labels': labels + customlabels
+        'labels': labels + custom_labels
     })
 
     return {
