@@ -1,0 +1,27 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+  build:
+    commands:
+      - cd ./LF1-index-photos
+      - zip -r LF1.zip ./*
+      - aws s3 cp LF1.zip s3://cs6998-a2-lambdas/LF1.zip
+      - cd ../LF2-search-photos
+      - zip -r LF2.zip ./*
+      - aws s3 cp LF2.zip s3://cs6998-a2-lambdas/LF2.zip
+
+      - zip -r ./
+  post_build:
+    commands:
+      - aws s3 cp s3://cs6998-a2-lambdas/LF1.zip LF1.zip
+      - aws s3 cp s3://cs6998-a2-lambdas/LF2.zip LF2.zip
+      - aws lambda update-function-code --function-name LF1-index-photos --zip-file fileb://LF1.zip --publish
+      - aws lambda update-function-code --function-name LF2-search-photos --zip-file fileb://LF2.zip --publish
+
+artifacts:
+  type: zip
+  files:
+    - ./LF1-index-photos/LF1.zip
+    - ./LF2-search-photos/LF2.zip
