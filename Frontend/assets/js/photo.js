@@ -1,8 +1,12 @@
 // aws reference: https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-generate-sdk-javascript.html
+// Transcribe: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-transcribe/
+// const { TranscribeClient } = require("@aws-sdk/client-transcribe");
+// const client = new TranscribeClient({ region: "us-east-1" });
 
 const apigClient = apigClientFactory.newClient();
 var SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
 const recognition = new SpeechRecognition();
+recognition.interimResults = true;
 var file = null;
 
 
@@ -24,23 +28,36 @@ const handleSearch = async () => {
 		if (res.data.results == "No Result Found") {
 			alert('No Such Photo Found!');
 		} else {
-			displayImage(res.data.results[0]);
+			// remove duplicate
+			unique_image_paths = [...new Set()];
+			console.log(res.data.results[0], res.data.results[1]);
 			console.log(`Find ${res.data.results[0]}`);
+
+			displayImage(
+				res.data.results[0],
+				(res.data.results[0] != res.data.results[1]) ? res.data.results[1] : null
+			);
 		}
 	}).catch((err) => {
 		console.log(`Search failed: ${err}`)
-	})
+	});
 };
 
 const handleAudio = async () => {
+	recognition.onstart = () => {
+		console.log("We are listening. Try speaking into the microphone.");
+	};
+
+	recognition.onresult = (event) => {
+		recognition.stop();
+		const speechToText = event.results[0][0].transcript;
+		console.log(speechToText);
+		$("#query-input").val(speechToText);
+		handleSearch();
+	};
+
     console.log('handleAudio called');
 	recognition.start();
-	recognition.onresult = (event) => {
-	  const speechToText = event.results[0][0].transcript;
-	  console.log(speechToText);
-	  $("#query-input").val(speechToText);
-	  handleSearch();
-	};
 };
 
 
@@ -58,6 +75,7 @@ const handleUpload = async (event) => {
 	}
 	let labels = $("#label").val();
     labels = labels.split(/[ ,]+/);     // split by space or comma
+	console.log(`uploaded labels ${labels}`)
 	let params = {
 		"object": file.name,
 		"x-amz-meta-customLabels": labels
@@ -82,31 +100,51 @@ const previewFile = (event) => {
 	console.log("onchange called");
 	file = event.target.files[0];
 
-	$("#img").removeAttr("hidden");
+	$("#img1").removeAttr("hidden");
+	$("#img2").prop("hidden", true);
 	if (file) {
-		img.src = URL.createObjectURL(file);
+		img1.src = URL.createObjectURL(file);
 	}
 };
 
-const displayImage = async (filepath) => {
+const displayImage = async (filepath1, filepath2 = null) => {
 	const die = (msg) => {
 		console.log(msg);
 		alert(msg);
 	};
 
+	$("#img2").prop("hidden", true);
+
 	try {
-		const res = await fetch(filepath);
+		let res = await fetch(filepath1);
 		if (res.status != 200) {
 			die(`Failed to fetch: status code ${res.status}`);
-			return;
+		} else {
+			let buffer = await streamToArrayBuffer(res.body);
+			let img_src = new TextDecoder().decode(buffer);
+			
+			$("#img1").removeAttr("hidden");
+			img1.src = img_src;
 		}
-		const buffer = await streamToArrayBuffer(res.body);
-		const img_src = new TextDecoder().decode(buffer);
-		
-		$("#img").removeAttr("hidden");
-		img.src = img_src;
 	} catch (err) {
 		die(`Failed to fetch and display image: ${err}`);
+	}
+
+	if (filepath2) {
+		try {
+			let res = await fetch(filepath2);
+			if (res.status != 200) {
+				die(`Failed to fetch: status code ${res.status}`);
+			} else {
+				let buffer = await streamToArrayBuffer(res.body);
+				let img_src = new TextDecoder().decode(buffer);
+				
+				$("#img2").removeAttr("hidden");
+				img2.src = img_src;
+			}
+		} catch (err) {
+			die(`Failed to fetch and display image: ${err}`);
+		}
 	}
 };
 

@@ -79,13 +79,14 @@ def search_open_search(labels):
             body=query
         )
         hits = response['hits']['hits']
-        img_list = []
+        print(f'hits are {hits}')
+        img_list = set()
         for element in hits:
             objectKey = element['_source']['objectKey']
             bucket = element['_source']['bucket']
             image_url = f'https://{bucket}.s3.amazonaws.com/{objectKey}'
-            img_list.append(image_url)
-        return img_list
+            img_list.add(image_url)
+        return list(img_list)
     except Exception as e:
         print(f'failed to search from OpenSearch: {e}')
 
