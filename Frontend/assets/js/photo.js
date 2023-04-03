@@ -7,6 +7,7 @@ const apigClient = apigClientFactory.newClient();
 var SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
 const recognition = new SpeechRecognition();
 recognition.interimResults = true;
+var recognition_clicked = false;	// prevent from querying multiple times
 var file = null;
 
 
@@ -50,6 +51,8 @@ const handleAudio = async () => {
 
 	recognition.onresult = (event) => {
 		recognition.stop();
+		if (!recognition_clicked) return;
+		recognition_clicked = false;
 		const speechToText = event.results[0][0].transcript;
 		console.log(speechToText);
 		$("#query-input").val(speechToText);
@@ -57,6 +60,7 @@ const handleAudio = async () => {
 	};
 
     console.log('handleAudio called');
+	recognition_clicked = true;
 	recognition.start();
 };
 
