@@ -11,8 +11,6 @@ phases:
       - cd ../LF2-search-photos
       - zip -r LF2.zip ./*
       - aws s3 cp LF2.zip s3://cs6998-a2-lambdas/LF2.zip
-
-      - zip -r ./
   post_build:
     commands:
       - aws s3 cp s3://cs6998-a2-lambdas/LF1.zip LF1.zip
